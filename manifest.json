@@ -1,0 +1,21 @@
+{
+  "short_name": "LoffeeFlow",
+  "name": "LoffeeFlow Daily Focus",
+  "icons": [
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/9512/9512626.png",
+      "type": "image/png",
+      "sizes": "192x192"
+    },
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/9512/9512626.png",
+      "type": "image/png",
+      "sizes": "512x512"
+    }
+  ],
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "theme_color": "#4f46e5",
+  "background_color": "#ffffff"
+}
