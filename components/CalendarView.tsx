@@ -2,14 +2,17 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useTasks } from '../context/TaskContext';
 import { useTheme } from '../context/ThemeContext';
-import { ChevronLeft, ChevronRight, X, Plus, Star, CheckSquare, Square, Trash2, Pencil, AlignLeft, Calendar as CalendarIcon, CornerDownRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, X, Plus, Star, CheckSquare, Square, Trash2, Pencil, AlignLeft, Calendar as CalendarIcon, CornerDownRight, LayoutTemplate, Rows } from 'lucide-react';
 import { Task, TaskStatus, SubTask } from '../types';
 import { EditTaskModal } from './EditTaskModal';
 import { RecursiveSubTaskItem } from './RecursiveSubTaskItem';
 import { updateSubtaskInTree, deleteSubtaskFromTree, addSubtaskToParent, toggleSubtaskInTree, generateId, updateSubtaskInTree as updateSubTitle } from '../utils/taskUtils';
+import { TimelineWheel } from './TimelineWheel';
 
 export const CalendarView: React.FC = () => {
   const [currentDate, setCurrentDate] = useState(new Date());
+  const [viewMode, setViewMode] = useState<'GRID' | 'TIMELINE'>('GRID');
+  
   const { tasks, addTask, toggleTaskStatus, deleteTask, updateTask, getTasksByDate } = useTasks();
   const { t, language } = useTheme();
 
@@ -85,120 +88,149 @@ export const CalendarView: React.FC = () => {
   };
 
   const monthName = currentDate.toLocaleDateString(language, { month: 'long' });
-  // Localized days of week
   const weekDays = Array.from({ length: 7 }, (_, i) => {
       const d = new Date(2023, 0, i + 1); // Jan 2023 started on Sunday
       return d.toLocaleDateString(language, { weekday: 'short' });
   });
 
   return (
-    <div className="w-full h-full flex flex-col p-4 md:p-6 relative bg-white dark:bg-slate-900">
-      <header className="flex items-center justify-between py-4 shrink-0">
-        <h2 className="text-2xl md:text-3xl font-bold text-slate-800 dark:text-white tracking-tight capitalize">
-            {monthName} <span className="text-slate-400 dark:text-slate-500 font-medium">{year}</span>
-        </h2>
-        <div className="flex gap-2">
-            <button 
-                onClick={handlePrevMonth} 
-                className="w-10 h-10 flex items-center justify-center rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700 transition-all active:scale-95"
-            >
-                <ChevronLeft size={20} strokeWidth={2.5} />
-            </button>
-            <button 
-                onClick={handleNextMonth} 
-                className="w-10 h-10 flex items-center justify-center rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700 transition-all active:scale-95"
-            >
-                <ChevronRight size={20} strokeWidth={2.5} />
-            </button>
+    <div className="w-full h-full flex flex-col relative bg-white dark:bg-slate-900">
+      <header className="flex items-center justify-between p-4 md:p-6 border-b border-slate-100 dark:border-slate-800 shrink-0 relative z-30 bg-white dark:bg-slate-900">
+        <div className="flex items-center gap-3">
+             <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-xl">
+                 <button 
+                    onClick={() => setViewMode('GRID')}
+                    className={`p-2 rounded-lg transition-all ${viewMode === 'GRID' ? 'bg-white dark:bg-slate-700 text-brand-600 dark:text-white shadow-sm' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'}`}
+                 >
+                     <CalendarIcon size={18} />
+                 </button>
+                 <button 
+                    onClick={() => setViewMode('TIMELINE')}
+                    className={`p-2 rounded-lg transition-all ${viewMode === 'TIMELINE' ? 'bg-white dark:bg-slate-700 text-brand-600 dark:text-white shadow-sm' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'}`}
+                 >
+                     <Rows size={18} />
+                 </button>
+             </div>
+             {viewMode === 'GRID' && (
+                <h2 className="text-xl md:text-2xl font-bold text-slate-800 dark:text-white tracking-tight capitalize ml-2">
+                    {monthName} <span className="text-slate-400 dark:text-slate-500 font-medium">{year}</span>
+                </h2>
+             )}
         </div>
+
+        {viewMode === 'GRID' && (
+            <div className="flex gap-2">
+                <button 
+                    onClick={handlePrevMonth} 
+                    className="w-9 h-9 flex items-center justify-center rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700 transition-all active:scale-95"
+                >
+                    <ChevronLeft size={18} strokeWidth={2.5} />
+                </button>
+                <button 
+                    onClick={handleNextMonth} 
+                    className="w-9 h-9 flex items-center justify-center rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700 transition-all active:scale-95"
+                >
+                    <ChevronRight size={18} strokeWidth={2.5} />
+                </button>
+            </div>
+        )}
       </header>
 
-      <div className="grid grid-cols-7 gap-1 md:gap-4 mb-2 md:mb-4 shrink-0">
-        {weekDays.map(d => (
-            <div key={d} className="text-center text-[0.65rem] md:text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">
-                {d}
+      {/* VIEW CONTENT */}
+      {viewMode === 'TIMELINE' ? (
+          <div className="flex-1 min-h-0 relative z-0">
+             <TimelineWheel />
+          </div>
+      ) : (
+          <div className="flex-1 flex flex-col min-h-0 p-4 md:p-6 pt-2 z-0">
+            <div className="grid grid-cols-7 gap-1 md:gap-4 mb-2 md:mb-4 shrink-0">
+                {weekDays.map(d => (
+                    <div key={d} className="text-center text-[0.65rem] md:text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">
+                        {d}
+                    </div>
+                ))}
             </div>
-        ))}
-      </div>
 
-      <div 
-        className="flex-1 grid grid-cols-7 gap-1 md:gap-4 min-h-0 pb-2 overflow-y-auto px-1"
-        style={{ gridTemplateRows: `repeat(${Math.max(totalRows, 5)}, minmax(7.5rem, 1fr))` }}
-      >
-        {daysArray.map((date, index) => {
-            if (!date) return <div key={`empty-${index}`} className="bg-slate-50/50 dark:bg-slate-800/30 rounded-lg md:rounded-2xl" />;
-            
-            const dayTasks = getTasksByDate(date);
-            const dateStr = toLocalDateStr(date);
-            const todayStr = toLocalDateStr(new Date());
-            const isToday = dateStr === todayStr;
+            <div 
+                className="flex-1 grid grid-cols-7 gap-1 md:gap-4 min-h-0 pb-2 overflow-y-auto px-1"
+                style={{ gridTemplateRows: `repeat(${Math.max(totalRows, 5)}, minmax(7.5rem, 1fr))` }}
+            >
+                {daysArray.map((date, index) => {
+                    if (!date) return <div key={`empty-${index}`} className="bg-slate-50/50 dark:bg-slate-800/30 rounded-lg md:rounded-2xl" />;
+                    
+                    const dayTasks = getTasksByDate(date);
+                    const dateStr = toLocalDateStr(date);
+                    const todayStr = toLocalDateStr(new Date());
+                    const isToday = dateStr === todayStr;
 
-            return (
-                <div 
-                    key={date.toISOString()} 
-                    onClick={() => handleOpenDayView(date)}
-                    className={`relative p-1 md:p-3 rounded-lg md:rounded-2xl flex flex-col gap-1 md:gap-2 transition-all cursor-pointer group outline-none ring-offset-2 dark:ring-offset-slate-900 ${
-                        isToday 
-                        ? 'bg-brand-50/30 dark:bg-brand-900/20 ring-2 ring-brand-500 dark:ring-brand-400' 
-                        : 'bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 hover:border-brand-200 dark:hover:border-brand-800 hover:shadow-md'
-                    }`}
-                >
-                    <div className="flex justify-between items-start shrink-0">
-                        <span className={`text-xs md:text-sm font-semibold w-6 h-6 md:w-8 md:h-8 flex items-center justify-center rounded-full transition-colors ${
-                            isToday 
-                            ? 'bg-brand-600 text-white shadow-lg shadow-brand-500/30' 
-                            : 'text-slate-500 dark:text-slate-400 group-hover:bg-slate-100 dark:group-hover:bg-slate-800'
-                        }`}>
-                            {date.getDate()}
-                        </span>
-                        
-                        <div className="hidden md:block opacity-0 group-hover:opacity-100 transition-opacity">
-                             <Plus size={16} className="text-slate-400 hover:text-brand-500" />
-                        </div>
-                    </div>
-
-                    {/* Task Pills (Desktop) */}
-                    <div className="flex-1 flex flex-col gap-1 min-w-0 px-1 py-0.5">
-                        {dayTasks.slice(0, 3).map(task => (
-                            <div 
-                                key={task.id}
-                                onClick={(e) => { e.stopPropagation(); setViewingTaskId(task.id); }}
-                                className={`hidden md:flex w-full items-center gap-1.5 px-2 py-1 rounded-md text-[0.7rem] font-semibold transition-colors border shadow-sm ${
-                                    task.status === TaskStatus.COMPLETED
-                                    ? 'bg-slate-100 text-slate-400 border-slate-200 dark:bg-slate-800 dark:text-slate-600 dark:border-slate-700 line-through'
-                                    : task.starLevel > 0
-                                        ? 'bg-amber-50 text-amber-800 border-amber-200 dark:bg-amber-900/30 dark:text-amber-300 dark:border-amber-800'
-                                        : 'bg-brand-50 text-brand-700 border-brand-200 dark:bg-brand-900/30 dark:text-brand-300 dark:border-brand-800'
-                                }`}
-                            >
-                                {task.starLevel > 0 && <Star size={10} className="shrink-0" fill="currentColor" />}
-                                <span className="truncate flex-1 text-left leading-tight">{task.title}</span>
+                    return (
+                        <div 
+                            key={date.toISOString()} 
+                            onClick={() => handleOpenDayView(date)}
+                            className={`relative p-1 md:p-3 rounded-lg md:rounded-2xl flex flex-col gap-1 md:gap-2 transition-all cursor-pointer group outline-none ring-offset-2 dark:ring-offset-slate-900 ${
+                                isToday 
+                                ? 'bg-brand-50/30 dark:bg-brand-900/20 ring-2 ring-brand-500 dark:ring-brand-400' 
+                                : 'bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 hover:border-brand-200 dark:hover:border-brand-800 hover:shadow-md'
+                            }`}
+                        >
+                            <div className="flex justify-between items-start shrink-0">
+                                <span className={`text-xs md:text-sm font-semibold w-6 h-6 md:w-8 md:h-8 flex items-center justify-center rounded-full transition-colors ${
+                                    isToday 
+                                    ? 'bg-brand-600 text-white shadow-lg shadow-brand-500/30' 
+                                    : 'text-slate-500 dark:text-slate-400 group-hover:bg-slate-100 dark:group-hover:bg-slate-800'
+                                }`}>
+                                    {date.getDate()}
+                                </span>
+                                
+                                <div className="hidden md:block opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <Plus size={16} className="text-slate-400 hover:text-brand-500" />
+                                </div>
                             </div>
-                        ))}
-                        {dayTasks.length > 3 && (
-                            <div className="hidden md:block text-[0.65rem] text-slate-400 pl-1 font-medium">
-                                +{dayTasks.length - 3} more
-                            </div>
-                        )}
 
-                        {/* Mobile Dots */}
-                        <div className="md:hidden flex flex-wrap gap-1 content-start mt-1">
-                            {dayTasks.slice(0, 5).map(task => (
-                                <div 
-                                    key={task.id} 
-                                    className={`w-1.5 h-1.5 rounded-full ${
-                                        task.status === TaskStatus.COMPLETED ? 'bg-slate-300 dark:bg-slate-700' :
-                                        task.starLevel > 0 ? 'bg-amber-500' : 'bg-brand-500'
-                                    }`}
-                                />
-                            ))}
-                            {dayTasks.length > 5 && <span className="text-[0.6rem] text-slate-400 leading-none">+</span>}
+                            {/* Task Pills (Desktop) */}
+                            <div className="flex-1 flex flex-col gap-1 min-w-0 px-1 py-0.5">
+                                {dayTasks.slice(0, 3).map(task => (
+                                    <div 
+                                        key={task.id}
+                                        onClick={(e) => { e.stopPropagation(); setViewingTaskId(task.id); }}
+                                        className={`hidden md:flex w-full items-center gap-1.5 px-2 py-1 rounded-md text-[0.7rem] font-semibold transition-colors border shadow-sm ${
+                                            task.status === TaskStatus.COMPLETED
+                                            ? 'bg-slate-100 text-slate-400 border-slate-200 dark:bg-slate-800 dark:text-slate-600 dark:border-slate-700 line-through'
+                                            : task.starLevel > 0
+                                                ? 'bg-amber-50 text-amber-800 border-amber-200 dark:bg-amber-900/30 dark:text-amber-300 dark:border-amber-800'
+                                                : 'bg-brand-50 text-brand-700 border-brand-200 dark:bg-brand-900/30 dark:text-brand-300 dark:border-brand-800'
+                                        }`}
+                                    >
+                                        {task.starLevel > 0 && <Star size={10} className="shrink-0" fill="currentColor" />}
+                                        <span className="truncate flex-1 text-left leading-tight">{task.title}</span>
+                                    </div>
+                                ))}
+                                {dayTasks.length > 3 && (
+                                    <div className="hidden md:block text-[0.65rem] text-slate-400 pl-1 font-medium">
+                                        +{dayTasks.length - 3} more
+                                    </div>
+                                )}
+
+                                {/* Mobile Dots */}
+                                <div className="md:hidden flex flex-wrap gap-1 content-start mt-1">
+                                    {dayTasks.slice(0, 5).map(task => (
+                                        <div 
+                                            key={task.id} 
+                                            className={`w-1.5 h-1.5 rounded-full ${
+                                                task.status === TaskStatus.COMPLETED ? 'bg-slate-300 dark:bg-slate-700' :
+                                                task.starLevel > 0 ? 'bg-amber-500' : 'bg-brand-500'
+                                            }`}
+                                        />
+                                    ))}
+                                    {dayTasks.length > 5 && <span className="text-[0.6rem] text-slate-400 leading-none">+</span>}
+                                </div>
+                            </div>
                         </div>
-                    </div>
-                </div>
-            );
-        })}
-      </div>
+                    );
+                })}
+            </div>
+          </div>
+      )}
 
       {/* Day View Modal */}
       {selectedDate && (
@@ -283,7 +315,7 @@ export const CalendarView: React.FC = () => {
       )}
 
       {/* Task Detail View (Checklist Mode) */}
-      {viewingTask && (
+      {viewingTaskId && viewingTask && (
           <TaskDetailModal 
               task={viewingTask}
               onClose={() => setViewingTaskId(null)}

@@ -1,42 +1,34 @@
-import React, { useState } from 'react';
+
+import React, { useState, useEffect } from 'react';
 import { Layout } from './Layout';
 import { Dashboard } from './Dashboard';
 import { CalendarView } from './CalendarView';
 import { FocusTimer } from './FocusTimer';
-import { Journal } from './Journal';
-import { TaskMap } from './TaskMap';
 import { View } from '../types';
 
 interface WebAppProps {
-    onExit: () => void;
+    initialView?: View;
 }
 
-export const WebApp: React.FC<WebAppProps> = ({ onExit }) => {
-  const [currentView, setCurrentView] = useState<View>('dashboard');
+export const WebApp: React.FC<WebAppProps> = ({ initialView = 'dashboard' }) => {
+  const [currentView, setCurrentView] = useState<View>(initialView);
+
+  useEffect(() => {
+    if (initialView) setCurrentView(initialView);
+  }, [initialView]);
 
   const renderView = () => {
     switch (currentView) {
-      case 'dashboard':
-        return <Dashboard />;
-      case 'calendar':
-        return <CalendarView />;
-      case 'focus':
-        return <FocusTimer />;
-      case 'journal':
-        return <Journal />;
-      case 'map':
-        return <TaskMap />;
-      default:
-        return <Dashboard />;
+      case 'dashboard': return <Dashboard />;
+      case 'calendar': return <CalendarView />;
+      case 'focus': return <FocusTimer />;
+      case 'timeline': return <CalendarView />; // Fallback if old link
+      default: return <Dashboard />;
     }
   };
 
   return (
-    <Layout 
-        currentView={currentView} 
-        setCurrentView={setCurrentView}
-        onExit={onExit}
-    >
+    <Layout currentView={currentView} setCurrentView={setCurrentView}>
         {renderView()}
     </Layout>
   );

@@ -1,8 +1,22 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useTasks } from '../context/TaskContext';
 import { useTheme } from '../context/ThemeContext';
-import { Plus, Search, Trash2, Calendar as CalendarIcon, Edit3, Maximize2 } from 'lucide-react';
+import { 
+  Plus, 
+  Search, 
+  Trash2, 
+  Calendar as CalendarIcon, 
+  Edit3, 
+  Maximize2, 
+  GripVertical, 
+  ChevronLeft, 
+  X, 
+  Save, 
+  FileText, 
+  Clock,
+  MoreVertical
+} from 'lucide-react';
 import { Note } from '../types';
 
 interface JournalProps {
@@ -13,211 +27,273 @@ interface JournalProps {
 export const Journal: React.FC<JournalProps> = ({ variant = 'full', onExpand }) => {
   const { notes, addNote, updateNote, deleteNote } = useTasks();
   const { t, language } = useTheme();
+  
+  // Navigation & Selection
   const [selectedNoteId, setSelectedNoteId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   
-  // Editor State
-  const [editTitle, setEditTitle] = useState('');
-  const [editContent, setEditContent] = useState('');
+  // Editor Buffers (Prevent direct context updates on every keystroke)
+  const [titleBuffer, setTitleBuffer] = useState('');
+  const [contentBuffer, setContentBuffer] = useState('');
+  const [isDirty, setIsDirty] = useState(false);
 
-  // Derived state
-  const sortedNotes = notes
-    .filter(n => n.title.toLowerCase().includes(searchQuery.toLowerCase()) || n.content.toLowerCase().includes(searchQuery.toLowerCase()))
-    .sort((a, b) => b.updatedAt - a.updatedAt);
+  // Refs for race condition management
+  const editorRef = useRef<HTMLDivElement>(null);
 
-  const selectedNote = notes.find(n => n.id === selectedNoteId);
+  // --- Data Processing ---
+  const filteredNotes = useMemo(() => {
+    const query = searchQuery.toLowerCase();
+    return notes
+      .filter(n => 
+        (n.title || "").toLowerCase().includes(query) || 
+        (n.content || "").toLowerCase().includes(query)
+      )
+      .sort((a, b) => b.updatedAt - a.updatedAt);
+  }, [notes, searchQuery]);
 
-  // Sync editor with selected note
+  const activeNote = useMemo(() => 
+    notes.find(n => n.id === selectedNoteId), 
+    [notes, selectedNoteId]
+  );
+
+  // --- Effects ---
+  // Load note into buffers when selection changes
   useEffect(() => {
-    if (selectedNote) {
-        setEditTitle(selectedNote.title);
-        setEditContent(selectedNote.content);
+    if (activeNote) {
+      setTitleBuffer(activeNote.title || '');
+      setContentBuffer(activeNote.content || '');
+      setIsDirty(false);
     } else {
-        setEditTitle('');
-        setEditContent('');
+      setTitleBuffer('');
+      setContentBuffer('');
+      setIsDirty(false);
     }
-  }, [selectedNoteId, notes]); // Depend on notes to update if external sync happens
+  }, [selectedNoteId, activeNote?.id]);
+
+  // --- Handlers ---
+  const handleBufferChange = (field: 'title' | 'content', value: string) => {
+    if (field === 'title') setTitleBuffer(value);
+    else setContentBuffer(value);
+    setIsDirty(true);
+  };
 
   const handleCreateNote = () => {
-      addNote({
-          title: 'Untitled Note',
-          content: ''
+    const id = addNote({
+      title: '',
+      content: ''
+    });
+    setSelectedNoteId(id);
+    if (variant === 'mini' && onExpand) onExpand();
+  };
+
+  const persistChanges = () => {
+    if (selectedNoteId && isDirty) {
+      updateNote(selectedNoteId, {
+        title: titleBuffer,
+        content: contentBuffer
       });
+      setIsDirty(false);
+    }
   };
 
-  const handleSave = () => {
-      if (selectedNoteId) {
-          updateNote(selectedNoteId, {
-              title: editTitle,
-              content: editContent
-          });
+  const confirmDelete = (id: string, e: React.MouseEvent) => {
+    // CRITICAL: preventDefault here stops the focus from shifting, 
+    // which prevents the blur event from firing on the inputs.
+    e.preventDefault();
+    e.stopPropagation();
+
+    const confirmed = window.confirm(`${t('common.delete')}?`);
+    if (confirmed) {
+      // If we are deleting the note we are looking at, clear selection first
+      if (selectedNoteId === id) {
+        setSelectedNoteId(null);
       }
+      deleteNote(id);
+    }
   };
 
-  const handleDelete = (id: string, e: React.MouseEvent) => {
-      e.stopPropagation();
-      if (window.confirm(t('common.delete') + "?")) {
-        deleteNote(id);
-        if (selectedNoteId === id) setSelectedNoteId(null);
-      }
-  };
+  // --- Sub-components ---
+  const NoteListItem = ({ note }: { note: Note }) => (
+    <div 
+      onClick={() => setSelectedNoteId(note.id)}
+      draggable
+      onDragStart={(e) => {
+        e.dataTransfer.setData('application/json', JSON.stringify(note));
+      }}
+      className={`group relative p-4 rounded-2xl cursor-pointer border transition-all duration-200 ${
+        selectedNoteId === note.id 
+          ? 'bg-brand-50 dark:bg-brand-900/20 border-brand-200 dark:border-brand-800 shadow-sm' 
+          : 'bg-white dark:bg-slate-900 border-slate-100 dark:border-slate-800 hover:border-brand-100 dark:hover:border-brand-900 hover:shadow-sm'
+      }`}
+    >
+      <div className="flex justify-between items-start mb-1">
+        <h3 className={`text-sm font-bold truncate pr-6 ${selectedNoteId === note.id ? 'text-brand-700 dark:text-brand-400' : 'text-slate-800 dark:text-slate-200'}`}>
+          {note.title || "Untitled Note"}
+        </h3>
+        <button 
+          onMouseDown={e => e.preventDefault()} // Block blur
+          onClick={e => confirmDelete(note.id, e)}
+          className="absolute top-3 right-3 p-1.5 text-slate-300 dark:text-slate-600 hover:text-rose-500 dark:hover:text-rose-400 rounded-lg md:opacity-0 group-hover:opacity-100 transition-all"
+        >
+          <Trash2 size={14} />
+        </button>
+      </div>
+      <p className="text-xs text-slate-400 dark:text-slate-500 line-clamp-2 mb-2 leading-relaxed">
+        {note.content || "No content yet..."}
+      </p>
+      <div className="flex items-center gap-2 text-[10px] font-medium text-slate-400">
+        <Clock size={10} />
+        {new Date(note.updatedAt).toLocaleDateString(language, { month: 'short', day: 'numeric' })}
+      </div>
+    </div>
+  );
 
-  // MINI MODE RENDER
+  // --- Renders ---
+
+  // Mini Variant (Floating Panel Mode)
   if (variant === 'mini') {
-      return (
-          <div className="h-full flex flex-col bg-white dark:bg-slate-900">
-              <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-white/90 dark:bg-slate-900/90 backdrop-blur-sm sticky top-0 z-20">
-                <h3 className="text-lg font-bold text-slate-800 dark:text-white">{t('journal.quick_notes')}</h3>
-                <div className="flex gap-2">
-                    <button onClick={handleCreateNote} className="p-2 bg-brand-100 dark:bg-brand-900/30 text-brand-600 dark:text-brand-400 rounded-lg hover:bg-brand-200">
-                        <Plus size={18} />
-                    </button>
-                    <button onClick={onExpand} className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg">
-                        <Maximize2 size={18} />
-                    </button>
-                </div>
-            </div>
-            
-            <div className="flex-1 overflow-y-auto p-3 space-y-3">
-                {sortedNotes.slice(0, 5).map(note => (
-                    <div 
-                        key={note.id}
-                        onClick={onExpand} // In mini mode, clicking a note opens full view
-                        className="p-3 bg-slate-50 dark:bg-slate-800 rounded-xl border border-slate-100 dark:border-slate-700 cursor-pointer hover:shadow-md transition-all group"
-                    >
-                         <h4 className="font-bold text-sm text-slate-700 dark:text-slate-200 mb-1 truncate">{note.title || "Untitled"}</h4>
-                         <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-2">{note.content || "No content..."}</p>
-                         <div className="flex justify-between items-center mt-2">
-                            <span className="text-[10px] text-slate-400">{new Date(note.updatedAt).toLocaleDateString(language)}</span>
-                         </div>
-                    </div>
-                ))}
-                {sortedNotes.length === 0 && (
-                    <div className="text-center py-8 text-slate-400 text-sm">{t('journal.no_notes')}</div>
-                )}
-            </div>
+    return (
+      <div className="h-full flex flex-col bg-white dark:bg-slate-900 overflow-hidden">
+        <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-white/80 dark:bg-slate-900/80 backdrop-blur-md">
+          <h3 className="text-lg font-bold text-slate-800 dark:text-white flex items-center gap-2">
+            <Edit3 size={18} className="text-brand-500" /> {t('journal.quick_notes')}
+          </h3>
+          <div className="flex gap-1">
+            <button onClick={handleCreateNote} className="p-2 text-brand-600 dark:text-brand-400 hover:bg-brand-50 dark:hover:bg-brand-900/30 rounded-xl transition-colors">
+              <Plus size={20} />
+            </button>
+            <button onClick={onExpand} className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 rounded-xl transition-colors">
+              <Maximize2 size={18} />
+            </button>
           </div>
-      )
+        </div>
+        
+        <div className="flex-1 overflow-y-auto p-4 space-y-3">
+          {filteredNotes.length === 0 ? (
+            <div className="h-full flex flex-col items-center justify-center text-slate-400 py-12">
+              <FileText size={32} className="opacity-20 mb-2" />
+              <p className="text-xs font-medium">{t('journal.no_notes')}</p>
+            </div>
+          ) : (
+            filteredNotes.map(note => <NoteListItem key={note.id} note={note} />)
+          )}
+        </div>
+      </div>
+    );
   }
 
-  // FULL MODE RENDER
+  // Full Variant (Main App View)
   return (
-    <div className="h-full flex flex-col md:flex-row bg-white dark:bg-slate-900 md:rounded-3xl overflow-hidden transition-colors duration-300">
+    <div className="h-full flex flex-col md:flex-row bg-slate-50 dark:bg-slate-950 overflow-hidden">
+      
+      {/* Sidebar: Note List */}
+      <div className={`w-full md:w-80 lg:w-96 border-r border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 flex flex-col transition-all duration-300 ${selectedNoteId ? 'hidden md:flex' : 'flex'}`}>
+        <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+          <h2 className="text-2xl font-black tracking-tight text-slate-800 dark:text-white">{t('journal.title')}</h2>
+          <button 
+            onClick={handleCreateNote}
+            className="p-2 bg-brand-600 text-white rounded-xl hover:bg-brand-700 transition-all shadow-lg shadow-brand-500/20 active:scale-95"
+          >
+            <Plus size={20} strokeWidth={2.5} />
+          </button>
+        </div>
         
-        {/* Left Sidebar: Note List */}
-        <div className={`w-full md:w-80 border-r border-slate-100 dark:border-slate-800 flex flex-col bg-slate-50/50 dark:bg-slate-900/50 ${selectedNoteId ? 'hidden md:flex' : 'flex'}`}>
-            <div className="p-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between gap-2">
-                <h2 className="text-xl font-bold text-slate-800 dark:text-white">{t('journal.title')}</h2>
+        <div className="p-4 px-6 border-b border-slate-50 dark:border-slate-800/50">
+          <div className="relative group">
+            <Search className="absolute left-3 top-2.5 text-slate-400 group-focus-within:text-brand-500 transition-colors" size={16} />
+            <input 
+              type="text" 
+              placeholder={t('journal.search')} 
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-10 pr-4 py-2 bg-slate-50 dark:bg-slate-800 border-none rounded-xl text-sm outline-none ring-2 ring-transparent focus:ring-brand-500/10 transition-all"
+            />
+          </div>
+        </div>
+
+        <div className="flex-1 overflow-y-auto p-4 space-y-2 scrollbar-hide">
+          {filteredNotes.map(note => <NoteListItem key={note.id} note={note} />)}
+          {filteredNotes.length === 0 && (
+            <div className="text-center py-20 opacity-30">
+              <FileText size={48} className="mx-auto mb-4" />
+              <p className="text-sm font-bold">{t('journal.not_found')}</p>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Main Area: Editor */}
+      <div className={`flex-1 flex flex-col bg-white dark:bg-slate-900 h-full relative ${!selectedNoteId ? 'hidden md:flex' : 'flex'}`}>
+        {selectedNoteId && activeNote ? (
+          <>
+            {/* Editor Top Bar (Mobile + Desktop Controls) */}
+            <div className="h-16 px-4 md:px-8 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between shrink-0 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md sticky top-0 z-30">
+              <div className="flex items-center gap-3">
                 <button 
-                    onClick={handleCreateNote}
-                    className="p-2 bg-brand-600 text-white rounded-xl hover:bg-brand-700 transition-colors shadow-md shadow-brand-200 dark:shadow-none"
+                  onClick={() => { persistChanges(); setSelectedNoteId(null); }} 
+                  className="md:hidden p-2 -ml-2 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors"
                 >
-                    <Plus size={20} />
+                  <ChevronLeft size={24} />
                 </button>
-            </div>
-            
-            <div className="p-4 pb-2">
-                <div className="relative group">
-                    <Search className="absolute left-3 top-2.5 text-slate-400 dark:text-slate-500 group-focus-within:text-brand-500 transition-colors" size={18} />
-                    <input 
-                        type="text" 
-                        placeholder={t('journal.search')} 
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        className="w-full pl-10 pr-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-700 dark:text-slate-200 focus:border-brand-300 dark:focus:border-brand-700 focus:ring-2 focus:ring-brand-100 dark:focus:ring-brand-900 outline-none transition-all placeholder:text-slate-400 dark:placeholder:text-slate-500"
-                    />
+                <div className="flex items-center gap-2 text-xs font-bold text-slate-400 uppercase tracking-widest">
+                  <Clock size={14} />
+                  <span>{isDirty ? t('journal.unsaved') : t('journal.saved')}</span>
                 </div>
-            </div>
+              </div>
 
-            <div className="flex-1 overflow-y-auto p-4 space-y-2">
-                {sortedNotes.length === 0 && (
-                    <div className="text-center py-10 opacity-50">
-                        <Edit3 size={48} className="mx-auto mb-2 text-slate-300 dark:text-slate-600" />
-                        <p className="text-sm text-slate-500 dark:text-slate-400">{t('journal.not_found')}</p>
-                    </div>
+              <div className="flex items-center gap-1">
+                {isDirty && (
+                  <button 
+                    onClick={persistChanges}
+                    className="p-2 text-brand-600 hover:bg-brand-50 dark:hover:bg-brand-900/30 rounded-xl transition-all"
+                    title={t('common.save')}
+                  >
+                    <Save size={20} />
+                  </button>
                 )}
-                {sortedNotes.map(note => (
-                    <div 
-                        key={note.id}
-                        onClick={() => setSelectedNoteId(note.id)}
-                        className={`group p-4 rounded-xl cursor-pointer border transition-all hover:shadow-sm ${
-                            selectedNoteId === note.id 
-                            ? 'bg-white dark:bg-slate-800 border-brand-200 dark:border-brand-900 shadow-sm ring-1 ring-brand-100 dark:ring-brand-900/50' 
-                            : 'bg-transparent border-transparent hover:bg-white dark:hover:bg-slate-800/50 hover:border-slate-100 dark:hover:border-slate-800'
-                        }`}
-                    >
-                        <h3 className={`font-semibold text-sm truncate mb-1 ${selectedNoteId === note.id ? 'text-brand-700 dark:text-brand-400' : 'text-slate-700 dark:text-slate-200'}`}>
-                            {note.title || "Untitled Note"}
-                        </h3>
-                        <p className="text-xs text-slate-400 dark:text-slate-500 truncate mb-2">
-                            {note.content || "No additional text"}
-                        </p>
-                        <div className="flex items-center justify-between">
-                            <span className="text-[10px] font-medium text-slate-400 dark:text-slate-500 bg-slate-100 dark:bg-slate-800/80 px-1.5 py-0.5 rounded">
-                                {new Date(note.updatedAt).toLocaleDateString(language)}
-                            </span>
-                            <button 
-                                onClick={(e) => handleDelete(note.id, e)}
-                                className="opacity-0 group-hover:opacity-100 p-1.5 hover:bg-rose-50 dark:hover:bg-rose-900/20 text-slate-300 dark:text-slate-600 hover:text-rose-500 dark:hover:text-rose-400 rounded-lg transition-all"
-                            >
-                                <Trash2 size={14} />
-                            </button>
-                        </div>
-                    </div>
-                ))}
+                <button 
+                  onMouseDown={e => e.preventDefault()} // Critical block
+                  onClick={e => confirmDelete(selectedNoteId, e)}
+                  className="p-2 text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/30 rounded-xl transition-all"
+                  title={t('common.delete')}
+                >
+                  <Trash2 size={20} />
+                </button>
+              </div>
             </div>
-        </div>
 
-        {/* Right: Editor */}
-        <div className={`flex-1 flex flex-col bg-white dark:bg-slate-900 h-full relative ${!selectedNoteId ? 'hidden md:flex' : 'flex'}`}>
-            {selectedNoteId ? (
-                <>
-                    {/* Editor Toolbar (Mobile Back Button) */}
-                    <div className="md:hidden p-4 border-b border-slate-100 dark:border-slate-800 flex items-center shrink-0">
-                        <button onClick={() => setSelectedNoteId(null)} className="text-slate-500 dark:text-slate-400 font-medium text-sm flex items-center gap-1">
-                            ← {t('common.back')}
-                        </button>
-                        <span className="ml-auto text-xs text-slate-300 dark:text-slate-600">
-                            {editContent !== selectedNote?.content || editTitle !== selectedNote?.title ? t('journal.unsaved') : t('journal.saved')}
-                        </span>
-                    </div>
-
-                    <div className="flex-1 overflow-y-auto flex flex-col">
-                        <div className="max-w-3xl w-full mx-auto p-6 md:p-12 flex flex-col flex-1 h-full">
-                            <input
-                                type="text"
-                                value={editTitle}
-                                onChange={(e) => setEditTitle(e.target.value)}
-                                onBlur={handleSave}
-                                placeholder={t('journal.title_placeholder')}
-                                className="w-full text-3xl md:text-4xl font-bold text-slate-800 dark:text-white placeholder:text-slate-200 dark:placeholder:text-slate-700 border-none outline-none bg-transparent mb-6 shrink-0"
-                            />
-                            <div className="flex items-center gap-2 text-xs text-slate-400 dark:text-slate-500 mb-8 font-medium shrink-0">
-                                <CalendarIcon size={14} />
-                                <span>
-                                    Last edited {new Date(selectedNote?.updatedAt || Date.now()).toLocaleString(language)}
-                                </span>
-                            </div>
-                            <textarea
-                                value={editContent}
-                                onChange={(e) => setEditContent(e.target.value)}
-                                onBlur={handleSave}
-                                placeholder={t('journal.content_placeholder')}
-                                className="w-full flex-1 resize-none text-lg text-slate-600 dark:text-slate-300 placeholder:text-slate-200 dark:placeholder:text-slate-700 leading-relaxed border-none outline-none bg-transparent min-h-0"
-                            />
-                        </div>
-                    </div>
-                </>
-            ) : (
-                <div className="flex-1 flex flex-col items-center justify-center text-slate-300 dark:text-slate-700">
-                    <div className="w-20 h-20 bg-slate-50 dark:bg-slate-800 rounded-full flex items-center justify-center mb-4">
-                        <Edit3 size={32} />
-                    </div>
-                    <p className="text-lg font-medium">{t('journal.select')}</p>
-                    <p className="text-sm">{t('journal.create_prompt')}</p>
-                </div>
-            )}
-        </div>
+            {/* Editor Canvas */}
+            <div ref={editorRef} className="flex-1 overflow-y-auto flex flex-col">
+              <div className="max-w-4xl w-full mx-auto p-8 md:p-16 flex flex-col flex-1">
+                <input
+                  type="text"
+                  value={titleBuffer}
+                  onChange={(e) => handleBufferChange('title', e.target.value)}
+                  onBlur={persistChanges}
+                  placeholder={t('journal.title_placeholder')}
+                  className="w-full text-4xl md:text-5xl font-black text-slate-900 dark:text-white placeholder:text-slate-100 dark:placeholder:text-slate-800 border-none outline-none bg-transparent mb-8 shrink-0"
+                />
+                
+                <textarea
+                  value={contentBuffer}
+                  onChange={(e) => handleBufferChange('content', e.target.value)}
+                  onBlur={persistChanges}
+                  placeholder={t('journal.content_placeholder')}
+                  className="w-full flex-1 resize-none text-lg md:text-xl text-slate-600 dark:text-slate-300 placeholder:text-slate-100 dark:placeholder:text-slate-800 leading-relaxed border-none outline-none bg-transparent min-h-[300px]"
+                />
+              </div>
+            </div>
+          </>
+        ) : (
+          <div className="flex-1 flex flex-col items-center justify-center text-slate-200 dark:text-slate-800">
+            <div className="w-24 h-24 bg-slate-50 dark:bg-slate-800/50 rounded-[2.5rem] flex items-center justify-center mb-6 shadow-inner">
+              <Edit3 size={40} className="opacity-20" />
+            </div>
+            <h3 className="text-xl font-bold text-slate-400 dark:text-slate-600 mb-1">{t('journal.select')}</h3>
+            <p className="text-sm font-medium opacity-50">{t('journal.create_prompt')}</p>
+          </div>
+        )}
+      </div>
 
     </div>
   );

@@ -1,11 +1,12 @@
+
 import React, { useRef, useState, useEffect } from 'react';
 import { useTasks } from '../context/TaskContext';
-import { Task, TaskStatus } from '../types';
+import { TaskStatus } from '../types';
 import { format, addDays, isSameMonth, isToday } from 'date-fns';
-import { ChevronRight, Maximize2 } from 'lucide-react';
+import { Maximize2 } from 'lucide-react';
 
 interface TimelineWheelProps {
-    onExpand: () => void;
+    onExpand?: () => void;
 }
 
 export const TimelineWheel: React.FC<TimelineWheelProps> = ({ onExpand }) => {
@@ -37,18 +38,16 @@ export const TimelineWheel: React.FC<TimelineWheelProps> = ({ onExpand }) => {
     }, [days]);
 
     return (
-        <div className="h-full flex flex-col bg-white dark:bg-slate-900 relative">
-            {/* Header */}
-            <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-white/90 dark:bg-slate-900/90 backdrop-blur-sm sticky top-0 z-20">
-                <h3 className="text-lg font-bold text-slate-800 dark:text-white">Timeline</h3>
+        <div className="h-full flex flex-col bg-white dark:bg-slate-900 relative group/wheel">
+            {onExpand && (
                 <button 
                     onClick={onExpand}
-                    className="p-2 text-slate-400 hover:text-brand-600 dark:hover:text-brand-400 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg transition-colors"
-                    title="Open Full Calendar"
+                    className="absolute top-2 right-2 z-20 p-1.5 bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm rounded-lg shadow-sm text-slate-400 hover:text-brand-600 opacity-0 group-hover/wheel:opacity-100 transition-opacity"
+                    title="Expand View"
                 >
-                    <Maximize2 size={18} />
+                    <Maximize2 size={16} />
                 </button>
-            </div>
+            )}
 
             {/* Scroll Area */}
             <div 

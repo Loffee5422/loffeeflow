@@ -3,12 +3,12 @@ import React, { useState } from 'react';
 import { useTasks } from '../context/TaskContext';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
-import { Cloud, LogOut, User as UserIcon, AlertCircle, X, Mail, Lock, Loader2, Zap, Crown, LayoutGrid } from 'lucide-react';
+import { Cloud, LogOut, User as UserIcon, AlertCircle, X, Mail, Lock, Loader2, Zap, Crown, ArrowLeft } from 'lucide-react';
 
 interface ProfileModalProps {
     isOpen: boolean;
     onClose: () => void;
-    onExit: () => void;
+    onExit?: () => void;
 }
 
 export const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, onExit }) => {
@@ -179,17 +179,15 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, onE
                         </div>
                     </div>
                 )}
-
-                {/* Exit to Home */}
-                <div className="flex justify-center pt-2">
+                
+                {onExit && (
                     <button 
-                        onClick={onExit}
-                        className="text-slate-400 dark:text-slate-500 text-sm font-medium hover:text-slate-600 dark:hover:text-slate-300 flex items-center gap-2 px-4 py-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors"
+                        onClick={onExit} 
+                        className="w-full py-3 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-medium hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors flex items-center justify-center gap-2"
                     >
-                        <LayoutGrid size={16} /> {t('profile.exit_hub')}
+                        <ArrowLeft size={18} /> {t('profile.exit_hub')}
                     </button>
-                </div>
-
+                )}
             </div>
         </div>
         

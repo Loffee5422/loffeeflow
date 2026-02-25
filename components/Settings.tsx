@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { useTheme, Language } from '../context/ThemeContext';
-import { X, Moon, Sun, Monitor, Type, LayoutTemplate, Globe, Check, EyeOff } from 'lucide-react';
+import { X, Moon, Sun, Monitor, Type, LayoutTemplate, Globe, Check, EyeOff, Trash2 } from 'lucide-react';
 
 interface SettingsModalProps {
     isOpen: boolean;
@@ -18,7 +18,7 @@ const LANGUAGES: { code: Language; label: string }[] = [
 ];
 
 export const Settings: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
-  const { theme, toggleTheme, uiSize, setUiSize, snapEnabled, toggleSnap, language, setLanguage, autoHideControls, toggleAutoHide, autoHideDuration, setAutoHideDuration, t } = useTheme();
+  const { theme, toggleTheme, uiSize, setUiSize, language, setLanguage, autoDeleteOverdue, toggleAutoDeleteOverdue, t } = useTheme();
   
   if (!isOpen) return null;
 
@@ -62,62 +62,21 @@ export const Settings: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
                     </div>
                 </div>
 
-                {/* Map Settings */}
-                <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm space-y-4">
-                    <h3 className="text-lg font-bold text-slate-800 dark:text-white flex items-center gap-2 mb-2">
-                        <LayoutTemplate size={20} className="text-slate-400" /> {t('settings.map_interface')}
-                    </h3>
-
-                    {/* Window Snapping */}
+                {/* Auto Delete Toggle */}
+                <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm">
                     <div className="flex items-center justify-between">
-                        <div>
-                            <span className="font-semibold text-slate-700 dark:text-slate-200">{t('settings.snap')}</span>
-                            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                                {t('settings.snap_desc')}
-                            </p>
-                        </div>
-                        <div 
-                            onClick={toggleSnap}
-                            className={`w-14 h-8 flex items-center rounded-full p-1 cursor-pointer transition-colors shrink-0 ${snapEnabled ? 'bg-brand-500' : 'bg-slate-200 dark:bg-slate-700'}`}
-                        >
-                            <div className={`bg-white w-6 h-6 rounded-full shadow-md transform transition-transform ${snapEnabled ? 'translate-x-6' : 'translate-x-0'}`}></div>
-                        </div>
-                    </div>
-
-                    <div className="h-px bg-slate-100 dark:bg-slate-800" />
-
-                    {/* Auto Hide Controls */}
-                    <div className="flex flex-col gap-3">
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <span className="font-semibold text-slate-700 dark:text-slate-200 flex items-center gap-2">
-                                    {t('settings.autohide')} <EyeOff size={14} className="text-slate-400" />
-                                </span>
-                                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                                    {t('settings.autohide_desc')}
-                                </p>
-                            </div>
-                            <div 
-                                onClick={toggleAutoHide}
-                                className={`w-14 h-8 flex items-center rounded-full p-1 cursor-pointer transition-colors shrink-0 ${autoHideControls ? 'bg-brand-500' : 'bg-slate-200 dark:bg-slate-700'}`}
-                            >
-                                <div className={`bg-white w-6 h-6 rounded-full shadow-md transform transition-transform ${autoHideControls ? 'translate-x-6' : 'translate-x-0'}`}></div>
-                            </div>
-                        </div>
-
-                        {autoHideControls && (
-                            <div className="flex bg-slate-100 dark:bg-slate-800 rounded-xl p-1 gap-1">
-                                {[5000, 15000, 30000, 60000].map(ms => (
-                                    <button
-                                        key={ms}
-                                        onClick={() => setAutoHideDuration(ms)}
-                                        className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${autoHideDuration === ms ? 'bg-white dark:bg-slate-700 text-brand-600 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'}`}
-                                    >
-                                        {ms / 1000}s
-                                    </button>
-                                ))}
-                            </div>
-                        )}
+                         <div>
+                            <h3 className="text-lg font-bold text-slate-800 dark:text-white flex items-center gap-2">
+                                <Trash2 size={20} className="text-slate-400" /> {t('settings.auto_delete')}
+                            </h3>
+                            <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">{t('settings.auto_delete_hint')}</p>
+                         </div>
+                         <button 
+                            onClick={toggleAutoDeleteOverdue}
+                            className={`w-12 h-7 rounded-full transition-colors relative ${autoDeleteOverdue ? 'bg-brand-600' : 'bg-slate-200 dark:bg-slate-700'}`}
+                         >
+                            <div className={`absolute top-1 w-5 h-5 rounded-full bg-white shadow-sm transition-transform ${autoDeleteOverdue ? 'left-6' : 'left-1'}`}></div>
+                         </button>
                     </div>
                 </div>
 
