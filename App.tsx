@@ -1,28 +1,23 @@
 
-import React, { useState, useEffect } from 'react';
-import { TaskProvider } from './context/TaskContext';
-import { AuthProvider } from './context/AuthContext';
-import { ThemeProvider } from './context/ThemeContext';
-import { WebApp } from './components/WebApp';
-import { LandingPage } from './components/LandingPage';
-import { PricingPage } from './components/PricingPage';
-import { HelpCenter } from './components/HelpCenter';
-import { Feedback } from './components/Feedback';
+import React, { lazy, Suspense, useState, useEffect } from 'react';
+import { PersonalCVPage } from './components/PersonalCVPage';
 import { ErrorBoundary } from './components/ErrorBoundary';
 
-type Screen = 'landing' | 'app' | 'pricing' | 'help' | 'feedback';
+type Screen = 'cv' | 'loffee';
+
+const LoffeeEntry = lazy(() => import('./components/LoffeeEntry').then(module => ({ default: module.LoffeeEntry })));
 
 const App: React.FC = () => {
-  const [screen, setScreen] = useState<Screen>('landing');
+  const [screen, setScreen] = useState<Screen>('cv');
 
   useEffect(() => {
     const handleUrlChange = () => {
-        const hash = window.location.hash.replace('#', '');
-        if (['app', 'pricing', 'help', 'feedback'].includes(hash)) {
-            setScreen(hash as Screen);
-        } else {
-            setScreen('landing');
-        }
+      const hash = window.location.hash.replace('#', '');
+      if (hash === 'loffee') {
+        setScreen('loffee');
+      } else {
+        setScreen('cv');
+      }
     };
     handleUrlChange();
     window.addEventListener('hashchange', handleUrlChange);
@@ -31,23 +26,18 @@ const App: React.FC = () => {
 
   const navigate = (target: Screen) => {
     setScreen(target);
-    window.location.hash = target === 'landing' ? '' : target;
+    window.location.hash = target === 'cv' ? 'cv' : 'loffee';
     window.scrollTo(0, 0);
   };
 
   return (
     <ErrorBoundary>
-        <AuthProvider>
-            <ThemeProvider>
-                <TaskProvider>
-                    {screen === 'landing' && <LandingPage onEnter={() => navigate('app')} onNavigate={navigate} />}
-                    {screen === 'pricing' && <PricingPage onNavigate={navigate} onEnter={() => navigate('app')} />}
-                    {screen === 'help' && <HelpCenter onNavigate={navigate} />}
-                    {screen === 'feedback' && <Feedback onNavigate={navigate} />}
-                    {screen === 'app' && <WebApp initialView="dashboard" />}
-                </TaskProvider>
-            </ThemeProvider>
-        </AuthProvider>
+      {screen === 'cv' && <PersonalCVPage onNavigate={navigate} />}
+      {screen === 'loffee' && (
+        <Suspense fallback={<div className="min-h-screen bg-white dark:bg-slate-950 text-slate-600 dark:text-slate-300 flex items-center justify-center">Loading Loffee Focus...</div>}>
+          <LoffeeEntry onBack={() => navigate('cv')} />
+        </Suspense>
+      )}
     </ErrorBoundary>
   );
 };
