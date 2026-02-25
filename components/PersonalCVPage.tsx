@@ -23,16 +23,13 @@ export const PersonalCVPage: React.FC<PersonalCVPageProps> = ({ onNavigate }) =>
 
       <main className="max-w-5xl mx-auto px-6 py-10 md:py-14 space-y-10">
         <section className="space-y-4">
-          <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight">Andy Sun (孙熙腾)</h1>
+          <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight">Andy Sun (孙熙腾) aka Loffee</h1>
           <p className="text-lg md:text-xl text-slate-600 dark:text-slate-300 font-medium">
             Software Engineering Student – University of Auckland (Second Year)
           </p>
           <p className="text-slate-600 dark:text-slate-300 leading-relaxed max-w-4xl">
             I am a second-year Software Engineering student at the University of Auckland, seeking internship
-            opportunities in machine learning, data science, or LLM application engineering. My experience includes
-            Python, data analysis with NumPy/Pandas, building ML models in PyTorch, and experimenting with modern NLP
-            tools like Hugging Face Transformers and LangChain. I&apos;m comfortable with Git and SQL, and proactively
-            learning Docker for deployment. I&apos;m eager to contribute to a real-world data or AI development team while
+            opportunities. I&apos;m eager to contribute to a real-world data / AI / Software development team while
             rapidly building new skills on the job.
           </p>
         </section>
