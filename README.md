@@ -1,6 +1,6 @@
 # Andy Sun CV Website
 
-This repository hosts a personal CV website for Andy Sun (孙熙腾), with `Loffee Focus` kept as a sub section of the site.
+This repository now hosts a personal CV website for Andy Sun (孙熙腾), with `Loffee Focus`（trimed version of original application） kept as a sub section of the site.
 
 ## Tech Stack
 
